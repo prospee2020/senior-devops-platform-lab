@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+
+# Node (Backstage, later weeks)
+node_modules/
+
+# Editors / OS
+.DS_Store
+.idea/
+.vscode/
+
+# Never commit credentials or kubeconfigs
+*.kubeconfig
+kubeconfig*
+.env
+*.pem
+*.key

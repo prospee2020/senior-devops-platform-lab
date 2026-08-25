@@ -1,0 +1,73 @@
+# BREAK/FIX LAB 2 — Broken readiness probe
+#
+# The container is HEALTHY, but the readiness probe points at a path that
+# returns 404. Kubernetes will run the pod forever and never send it traffic.
+#
+#   kubectl apply -f k8s/breakfix/02-broken-readiness.yaml
+#
+# Expected symptoms:
+#   - Pod status: Running, but READY 0/1 — the classic "green but broken"
+#   - Service has no endpoints -> curls through the Service time out
+#   - describe pod shows: "Readiness probe failed: HTTP probe failed with statuscode: 404"
+#
+# Investigate with:
+#   kubectl -n breakfix get pods
+#   kubectl -n breakfix describe pod -l scenario=broken-readiness
+#   kubectl -n breakfix get endpoints broken-readiness   # <- empty ENDPOINTS column
+#
+# Clean up:
+#   kubectl delete ns breakfix
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: breakfix
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: broken-readiness
+  namespace: breakfix
+  labels:
+    scenario: broken-readiness
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      scenario: broken-readiness
+  template:
+    metadata:
+      labels:
+        scenario: broken-readiness
+    spec:
+      containers:
+        - name: api
+          image: senior-devops-api:dev
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8000
+          readinessProbe:
+            httpGet:
+              path: /readyz-wrong-path   # <- the bug
+              port: http
+            periodSeconds: 5
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: broken-readiness
+  namespace: breakfix
+spec:
+  selector:
+    scenario: broken-readiness
+  ports:
+    - port: 80
+      targetPort: http

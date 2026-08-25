@@ -1,0 +1,53 @@
+# BREAK/FIX LAB 1 — Bad image tag (ImagePullBackOff / ErrImageNeverPull)
+#
+# Apply on top of a working dev deployment:
+#   kubectl -n dev patch deployment senior-devops-api --type json \
+#     -p '[{"op":"replace","path":"/spec/template/spec/containers/0/image","value":"senior-devops-api:does-not-exist"}]'
+#
+# ...or apply this manifest, which deploys a standalone broken workload:
+#   kubectl apply -f k8s/breakfix/01-bad-image.yaml
+#
+# Expected symptoms:
+#   - New ReplicaSet pods stuck in ErrImagePull -> ImagePullBackOff
+#   - OLD pods keep serving (rolling update safety: maxUnavailable default)
+#
+# Investigate with:
+#   kubectl -n breakfix get pods
+#   kubectl -n breakfix describe pod -l scenario=bad-image   # read Events at the bottom
+#   kubectl -n breakfix get events --sort-by=.lastTimestamp
+#
+# Clean up:
+#   kubectl delete ns breakfix
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: breakfix
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bad-image
+  namespace: breakfix
+  labels:
+    scenario: bad-image
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      scenario: bad-image
+  template:
+    metadata:
+      labels:
+        scenario: bad-image
+    spec:
+      containers:
+        - name: api
+          image: senior-devops-api:this-tag-does-not-exist
+          imagePullPolicy: IfNotPresent
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi

@@ -1,0 +1,62 @@
+# BREAK/FIX LAB 3 — Memory pressure / OOMKilled
+#
+# A python container allocates memory past its 64Mi limit. The kernel's
+# OOM killer terminates it (exit code 137); Kubernetes restarts it;
+# repeated kills become CrashLoopBackOff.
+#
+#   kubectl apply -f k8s/breakfix/03-oom.yaml
+#
+# Expected symptoms:
+#   - Pod restarts climbing; STATUS cycles OOMKilled -> Running -> CrashLoopBackOff
+#   - describe pod: Last State: Terminated, Reason: OOMKilled, Exit Code: 137
+#
+# Investigate with:
+#   kubectl -n breakfix get pods -w
+#   kubectl -n breakfix describe pod -l scenario=oom | grep -A5 "Last State"
+#   kubectl -n breakfix logs -l scenario=oom --previous   # logs of the KILLED container
+#
+# Clean up:
+#   kubectl delete ns breakfix
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: breakfix
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: oom-demo
+  namespace: breakfix
+  labels:
+    scenario: oom
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      scenario: oom
+  template:
+    metadata:
+      labels:
+        scenario: oom
+    spec:
+      containers:
+        - name: hog
+          image: python:3.13-slim
+          command:
+            - python3
+            - -c
+            - |
+              import time
+              print("allocating memory past the 64Mi limit...", flush=True)
+              chunks = []
+              for i in range(300):
+                  chunks.append(bytearray(1024 * 1024))  # +1MiB per step
+                  print(f"allocated {i+1} MiB", flush=True)
+                  time.sleep(0.05)
+          resources:
+            requests:
+              cpu: 50m
+              memory: 32Mi
+            limits:
+              cpu: 200m
+              memory: 64Mi   # <- the ceiling the allocation loop will hit

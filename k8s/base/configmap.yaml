@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: senior-devops-api-config
+  labels:
+    app.kubernetes.io/name: senior-devops-api
+data:
+  # Non-sensitive configuration ONLY. Secrets never go in ConfigMaps.
+  SERVICE_NAME: senior-devops-api
+  APP_ENV: base

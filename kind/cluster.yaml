@@ -1,0 +1,14 @@
+# kind cluster definition for the platform lab.
+# Verified against kind v0.32.x (default node image: Kubernetes v1.36.x).
+#
+#   make cluster-up      (wraps: kind create cluster --name platform-lab --config kind/cluster.yaml)
+#
+# One control-plane + one worker: enough to see real scheduling decisions
+# without burning laptop RAM. extraPortMappings are reserved for later weeks
+# (ingress); Week 1 uses `kubectl port-forward` on purpose.
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: platform-lab
+nodes:
+  - role: control-plane
+  - role: worker
