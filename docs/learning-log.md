@@ -140,3 +140,47 @@ All work local. AWS cost: $0.
 
 Troubleshoot in layers (client → config → network → server) instead of
 assuming the tool you typed is the broken part.
+
+
+
+## 2026-08-28 — Day 2: Local Cluster & Contexts
+
+### What I learned
+I learned how `kubectl` relies on `kubeconfig` contexts to route commands to the correct API server. I also learned the basic workflow of inspecting Pods, Services, and Events.
+
+### What I built
+A local `kind` Kubernetes cluster and a test Nginx deployment.
+
+### Commands used
+`kubectl config get-contexts`
+`kubectl create deployment`
+`kubectl expose deployment`
+`kubectl describe pod`
+`kubectl rollout undo`
+
+### Validation evidence
+`kubectl get pods` showed the nginx pod transitioning to `Running`.
+
+### Failure introduced / observed
+Updated the deployment with a bad image tag (`nginx:broken-tag-123`).
+
+### Investigation
+Ran `kubectl describe pod -l app=nginx` and reviewed the Events section.
+
+### Root cause
+The container runtime could not pull the image because the tag did not exist in the remote registry, resulting in an `ImagePullBackOff`.
+
+### Fix
+Reverted the deployment state using `kubectl rollout undo deployment/nginx`.
+
+### Security impact
+Nginx runs as root by default, violating least-privilege principles.
+
+### Reliability impact
+Running a single pod provides no high availability.
+
+### Cost impact
+$0.
+
+### Interview takeaway
+When a pod is failing to start, `kubectl describe pod` and checking the Events is the fastest way to identify scheduling or image pull errors.
